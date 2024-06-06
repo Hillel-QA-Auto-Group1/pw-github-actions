@@ -4,13 +4,11 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
 jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +19,23 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
       - name: Run Playwright tests
-        run: npx playwright test
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            case "${{ inputs.test_suite }}" in
+              suite1)
+                npx playwright test suite1
+                ;;
+              suite2)
+                npx playwright test suite2
+                ;;
+              *) 
+                echo "Invalid test suite selected."
+                ;;
+            esac
+          else
+            npx playwright test
+          fi
+        shell: bash
       - name: Upload Playwright report artifact
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -31,6 +45,7 @@ jobs:
           retention-days: 30
 
   deploy:
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     needs: test
     permissions:
