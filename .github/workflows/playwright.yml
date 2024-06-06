@@ -10,37 +10,31 @@ on:
         description: 'Select the test suite to run'
         required: true
         default: 'suite1' # You can set a default value if needed
+
 jobs:
-  test:
-    timeout-minutes: 60
+  run_playwright_tests:
+    name: Run Playwright tests - ${{ inputs.test_suite }}
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'suite1' || github.event.inputs.test_suite == 'suite2' }}
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+
       - name: Install dependencies
         run: npm ci
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+
       - name: Run Playwright tests
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            case "${{ inputs.test_suite }}" in
-              suite1)
-                npx playwright test suite1
-                ;;
-              suite2)
-                npx playwright test suite2
-                ;;
-              *) 
-                echo "Invalid test suite selected."
-                ;;
-            esac
-          else
-            npx playwright test
-          fi
-        shell: bash
+        run: npx playwright test ${{ inputs.test_suite }}
+
       - name: Upload Playwright report artifact
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -48,28 +42,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
-
-  deploy:
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    needs: test
-    permissions:
-      pages: write
-      id-token: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Download Playwright report artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: playwright-report
-          path: out
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Upload artifact to Pages
-        uses: actions/upload-pages-artifact@v1
-        with:
-          path: out
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v1
