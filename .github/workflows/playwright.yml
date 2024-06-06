@@ -5,6 +5,11 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Select the test suite to run'
+        required: true
+        default: 'suite1' # You can set a default value if needed
 jobs:
   test:
     timeout-minutes: 60
